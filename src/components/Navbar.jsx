@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import AutoCroppedLogo from './AutoCroppedLogo';
 
 export default function Navbar({ activeTab: propActiveTab, onTabChange }) {
   const [localActiveTab, setLocalActiveTab] = useState('HOME');
@@ -41,39 +42,21 @@ export default function Navbar({ activeTab: propActiveTab, onTabChange }) {
       {/* Main Navbar Grid */}
       <div className="w-full grid grid-cols-1 md:grid-cols-[240px_1fr_280px] min-h-[90px] border-b border-[#2C2C2C]">
         
-        {/* Left Section: Logo & Metadata Box */}
+        {/* Left Section: Brand Logo Identity */}
         <motion.div 
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.2, type: "spring", stiffness: 160, damping: 18 }}
-          className="flex flex-col justify-center items-center md:items-start p-4 md:pl-8 border-b md:border-b-0 md:border-r border-[#2C2C2C] relative group"
+          onClick={() => onTabChange && onTabChange('HOME')}
+          className="flex items-center justify-center p-4 md:px-8 border-b md:border-b-0 md:border-r border-[#2C2C2C] relative group cursor-pointer"
         >
-          <span className="text-[9px] text-[#6B6B6B] mb-1 font-bold tracking-widest">[ MAEVIS GBL SYSTEM PORTAL ]</span>
-          
-          {/* Stylized Futuristic Logo Box - Animated clip reveal */}
-          <motion.div 
-            initial={{ clipPath: "inset(0 100% 0 0)" }}
-            animate={{ clipPath: "inset(0 0 0 0)" }}
-            transition={{ delay: 0.4, duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
-            className="border border-white/40 p-1 bg-black/40 relative"
-          >
-            <div className="border-2 border-white px-4 py-1.5 flex items-center relative overflow-hidden">
-              {/* Decorative crosshair lines in corners */}
-              <div className="absolute top-0 left-0 w-1 h-1 border-t border-l border-[#4ADE80]"></div>
-              <div className="absolute top-0 right-0 w-1 h-1 border-t border-r border-[#4ADE80]"></div>
-              <div className="absolute bottom-0 left-0 w-1 h-1 border-b border-l border-[#4ADE80]"></div>
-              <div className="absolute bottom-0 right-0 w-1 h-1 border-b border-r border-[#4ADE80]"></div>
-              
-              {/* Logo text with slant */}
-              <span className="font-sans font-black italic text-xl tracking-[0.15em] text-white skew-x-[-8deg] relative select-none">
-                MAEVIS
-                {/* Horizontal cutting line */}
-                <div className="absolute top-[55%] left-0 w-full h-[1px] bg-black/80"></div>
-              </span>
-            </div>
-          </motion.div>
-          
-          <span className="text-[9px] text-[#6B6B6B] mt-1 tracking-tighter">[ OPERATIONAL UNIT v.2026 // RAAVH-74 ]</span>
+          {/* Logo Image */}
+          <AutoCroppedLogo 
+            src="/logo.png" 
+            alt="MAEVIS Logo" 
+            style={{ filter: 'invert(1)', height: '52px', width: 'auto' }} 
+            className="select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
+          />
         </motion.div>
 
         {/* Center Section: Main Interactive Navigation Tabs */}

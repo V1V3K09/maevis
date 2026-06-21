@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Center } from '@react-three/drei';
+// Drei Center removed
 import { motion, AnimatePresence } from 'framer-motion';
+import AutoCroppedLogo from './AutoCroppedLogo';
 import * as THREE from 'three';
 import gsap from 'gsap';
 
@@ -196,16 +197,17 @@ const PrintingShaderMaterial = {
   uniforms: {
     uPrintProgress: { value: -1.8 },
     uLaserProgress: { value: -2.0 },
-    uBaseColor: { value: new THREE.Color('#1F1F1F') },
+    uBaseColor: { value: new THREE.Color('#64748B') },
     uGlowColor: { value: new THREE.Color('#4ADE80') },
   },
   vertexShader: `
-    varying vec3 vPosition;
+    varying vec3 vWorldPosition;
     varying vec3 vNormal;
     void main() {
-      vPosition = position;
+      vec4 worldPos = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPos.xyz;
       vNormal = normalize(normalMatrix * normal);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      gl_Position = projectionMatrix * viewMatrix * worldPos;
     }
   `,
   fragmentShader: `
@@ -213,11 +215,11 @@ const PrintingShaderMaterial = {
     uniform float uLaserProgress;
     uniform vec3 uBaseColor;
     uniform vec3 uGlowColor;
-    varying vec3 vPosition;
+    varying vec3 vWorldPosition;
     varying vec3 vNormal;
     
     void main() {
-      float y = vPosition.y;
+      float y = vWorldPosition.y;
       
       // Discard anything above current print head Y limit
       if (y > uPrintProgress) {
@@ -261,13 +263,20 @@ const PrintingShaderMaterial = {
 // ==========================================
 // R3F Cinematic Camera Controller
 // ==========================================
-function CameraController({ cameraRef }) {
+function CameraController({ cameraRef, lookAtTarget }) {
   const { camera } = useThree();
   useEffect(() => {
     if (cameraRef) {
       cameraRef.current = camera;
     }
   }, [camera, cameraRef]);
+
+  useFrame(() => {
+    if (camera && lookAtTarget && lookAtTarget.current) {
+      camera.lookAt(lookAtTarget.current);
+    }
+  });
+
   return null;
 }
 
@@ -357,6 +366,7 @@ export default function ThreeLoader({ onComplete }) {
   
   const shaderMaterialRef = useRef();
   const isPrintingRef = useRef(false);
+  const lookAtTarget = useRef(new THREE.Vector3(0, 0.45, 0));
 
   // Set up uniforms for Torus Knot custom material
   useEffect(() => {
@@ -406,6 +416,12 @@ export default function ThreeLoader({ onComplete }) {
   }, []);
 
   const startLoadingTimeline = () => {
+    // Safety check: ensure Canvas is fully mounted and R3F refs are ready
+    if (!camera.current || !gantry.current || !nozzle.current || !collectible.current || !packageBox.current || !floorGrid.current) {
+      setTimeout(startLoadingTimeline, 50);
+      return;
+    }
+
     const timeline = gsap.timeline({
       onUpdate: () => {
         // Track overall progress percentage for visual text feedback
@@ -421,13 +437,17 @@ export default function ThreeLoader({ onComplete }) {
     // Reset default properties
     gsap.set(camera.current.position, { x: 5, y: 3.5, z: 6.5 });
     camera.current.lookAt(0, 0, 0);
+    
+    // Initialize shader uniform Y heights relative to world coordinates
+    gsap.set(shaderMaterialRef.current.uniforms.uPrintProgress, { value: -0.4 });
+    gsap.set(shaderMaterialRef.current.uniforms.uLaserProgress, { value: 0.95 });
 
     // ----------------------------------------------------
     // STAGE 1: Dark workshop camera pivot & printer slide-in
     // ----------------------------------------------------
-    // Gantry lowers into frame
+    // Gantry lowers into frame (nozzle tip lands on print bed Y height)
     timeline.to(gantry.current.position, {
-      y: 1.5,
+      y: -0.05,
       duration: 1.2,
       ease: "power2.out",
       onStart: () => {
@@ -465,16 +485,16 @@ export default function ThreeLoader({ onComplete }) {
       playContinuousServo();
     }, 1.2);
 
-    // Animate nozzle gantry height tracking print progress
+    // Animate nozzle gantry height tracking print progress (up to top of M logo Y height)
     timeline.to(gantry.current.position, {
-      y: 3.2,
+      y: 1.05,
       duration: 2.2,
       ease: "linear"
     }, 1.2);
 
-    // Animate Custom Shader printing reveal uniform (rise)
+    // Animate Custom Shader printing reveal uniform (rise through model Y limits)
     timeline.to(shaderMaterialRef.current.uniforms.uPrintProgress, {
-      value: 1.5,
+      value: 0.78,
       duration: 2.2,
       ease: "linear"
     }, 1.2);
@@ -502,9 +522,9 @@ export default function ThreeLoader({ onComplete }) {
       ease: "power2.in"
     }, 3.4);
 
-    // Trigger Laser Scan Sweep (uniform moves top-to-bottom)
+    // Trigger Laser Scan Sweep (uniform moves top-to-bottom through world Y limits)
     timeline.to(shaderMaterialRef.current.uniforms.uLaserProgress, {
-      value: -1.6,
+      value: -0.45,
       duration: 1.2,
       ease: "power1.inOut",
       onStart: () => {
@@ -571,7 +591,7 @@ export default function ThreeLoader({ onComplete }) {
     // Camera zooms straight through the packaging box
     timeline.to(camera.current.position, {
       x: 0,
-      y: 0,
+      y: 0.45,
       z: 1.2,
       duration: 1.2,
       ease: "power3.in"
@@ -656,18 +676,19 @@ export default function ThreeLoader({ onComplete }) {
             <color attach="background" args={['#000000']} />
             
             {/* Cinematic Camera Controller */}
-            <CameraController cameraRef={camera} />
+            <CameraController cameraRef={camera} lookAtTarget={lookAtTarget} />
 
             {/* Ambient Base Shadow Lighting */}
-            <ambientLight intensity={0.15} />
-            <directionalLight position={[2, 5, 2]} intensity={0.3} color="#ffffff" />
+            <ambientLight intensity={0.8} />
+            <directionalLight position={[2, 5, 2]} intensity={2.2} color="#ffffff" />
             
             {/* Main Green Volumetric Spotlight */}
             <spotLight 
               position={[0, 4.0, 0]} 
-              angle={0.45} 
-              penumbra={0.5} 
-              intensity={4.5} 
+              angle={0.55} 
+              penumbra={0.6} 
+              intensity={35.0} 
+              decay={0}
               color="#4ADE80" 
               castShadow
             />
@@ -676,34 +697,29 @@ export default function ThreeLoader({ onComplete }) {
             <VolumetricLightBeam />
 
             {/* Three.js Scene Contents */}
-            <Center>
-              {/* 3D printed Butterfly Knife (Balisong) */}
+            <group>
+              {/* 3D printed Stylized Brutalist 'M' Logo (MAEVIS Brand Identifier) */}
               <group ref={collectible} position={[0, -0.15, 0]}>
                 {shaderMaterialRef.current && (
                   <group>
-                    {/* Central Blade */}
-                    <mesh castShadow receiveShadow position={[0, 0.5, 0]}>
-                      <boxGeometry args={[0.08, 1.0, 0.02]} />
+                    {/* Left Vertical Pillar */}
+                    <mesh castShadow receiveShadow position={[-0.45, 0.35, 0]}>
+                      <boxGeometry args={[0.2, 1.1, 0.2]} />
                       <primitive object={shaderMaterialRef.current} attach="material" />
                     </mesh>
-                    {/* Blade Tip */}
-                    <mesh castShadow receiveShadow position={[0, 1.03, 0]} rotation={[0, 0, Math.PI / 4]}>
-                      <boxGeometry args={[0.056, 0.056, 0.02]} />
+                    {/* Right Vertical Pillar */}
+                    <mesh castShadow receiveShadow position={[0.45, 0.35, 0]}>
+                      <boxGeometry args={[0.2, 1.1, 0.2]} />
                       <primitive object={shaderMaterialRef.current} attach="material" />
                     </mesh>
-                    {/* Left Handle */}
-                    <mesh castShadow receiveShadow position={[-0.12, -0.3, 0]}>
-                      <boxGeometry args={[0.08, 0.75, 0.05]} />
+                    {/* Left Diagonal Beam */}
+                    <mesh castShadow receiveShadow position={[-0.22, 0.45, 0]} rotation={[0, 0, Math.PI / 5.5]}>
+                      <boxGeometry args={[0.16, 0.75, 0.2]} />
                       <primitive object={shaderMaterialRef.current} attach="material" />
                     </mesh>
-                    {/* Right Handle */}
-                    <mesh castShadow receiveShadow position={[0.12, -0.3, 0]}>
-                      <boxGeometry args={[0.08, 0.75, 0.05]} />
-                      <primitive object={shaderMaterialRef.current} attach="material" />
-                    </mesh>
-                    {/* Crossguard / Pivot Area */}
-                    <mesh castShadow receiveShadow position={[0, 0.1, 0]}>
-                      <boxGeometry args={[0.28, 0.08, 0.06]} />
+                    {/* Right Diagonal Beam */}
+                    <mesh castShadow receiveShadow position={[0.22, 0.45, 0]} rotation={[0, 0, -Math.PI / 5.5]}>
+                      <boxGeometry args={[0.16, 0.75, 0.2]} />
                       <primitive object={shaderMaterialRef.current} attach="material" />
                     </mesh>
                   </group>
@@ -732,21 +748,21 @@ export default function ThreeLoader({ onComplete }) {
                 {/* Horizontal Guide Rail (X bar) */}
                 <mesh position={[0, 0.1, 0]}>
                   <boxGeometry args={[4.2, 0.12, 0.12]} />
-                  <meshStandardMaterial color="#222222" roughness={0.7} metalness={0.8} />
+                  <meshStandardMaterial color="#444444" roughness={0.5} metalness={0.8} />
                 </mesh>
                 {/* Horizontal Carriage Block */}
                 <group ref={nozzle}>
                   <mesh position={[0, 0.05, 0]}>
                     <boxGeometry args={[0.5, 0.3, 0.5]} />
-                    <meshStandardMaterial color="#333333" roughness={0.5} metalness={0.9} />
+                    <meshStandardMaterial color="#555555" roughness={0.4} metalness={0.9} />
                   </mesh>
                   {/* Extruder nozzle cone */}
                   <mesh position={[0, -0.15, 0]} rotation={[Math.PI, 0, 0]}>
                     <coneGeometry args={[0.08, 0.25, 8]} />
-                    <meshStandardMaterial color="#666666" roughness={0.3} metalness={0.9} />
+                    <meshStandardMaterial color="#888888" roughness={0.2} metalness={0.9} />
                   </mesh>
                   {/* Glowing print head laser indicator pointlight */}
-                  <pointLight position={[0, -0.28, 0]} intensity={1.8} distance={1.2} color="#4ADE80" />
+                  <pointLight position={[0, -0.28, 0]} intensity={12.0} distance={2.5} decay={1} color="#4ADE80" />
                 </group>
               </group>
 
@@ -755,12 +771,12 @@ export default function ThreeLoader({ onComplete }) {
                 {/* Plate */}
                 <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
                   <planeGeometry args={[5, 5]} />
-                  <meshStandardMaterial color="#0A0A0A" roughness={0.9} />
+                  <meshStandardMaterial color="#141416" roughness={0.8} />
                 </mesh>
                 {/* Hexagonal grid lines */}
-                <gridHelper args={[6, 24, '#333333', '#1F1F1F']} position={[0, 0.01, 0]} />
+                <gridHelper args={[6, 24, '#4ADE80', '#2C2C2C']} position={[0, 0.01, 0]} />
               </group>
-            </Center>
+            </group>
 
             {/* Custom Nozzle Jittering Loop */}
             <NozzleController nozzleRef={nozzle} gantryRef={gantry} isPrinting={isPrintingRef} />
@@ -823,20 +839,24 @@ export default function ThreeLoader({ onComplete }) {
         ref={logoOverlay}
         className="absolute inset-0 z-50 bg-black flex items-center justify-center pointer-events-none opacity-0"
       >
-        <div ref={logoText} className="flex flex-col items-center">
-          <div className="border border-white/40 p-2 bg-black/60 relative scale-150">
-            <div className="border-2 border-white px-8 py-3 flex items-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-[#4ADE80]"></div>
-              <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-[#4ADE80]"></div>
-              <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-[#4ADE80]"></div>
-              <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-[#4ADE80]"></div>
-              <span className="font-sans font-black italic text-3xl tracking-[0.2em] text-white skew-x-[-8deg] relative select-none">
-                MAEVIS
-                <div className="absolute top-[55%] left-0 w-full h-[2px] bg-black/80"></div>
-              </span>
+        <div ref={logoText} className="flex flex-col items-center max-w-[280px] md:max-w-md px-6">
+          <div className="border border-white/20 p-2 bg-black/60 relative scale-[1.25] md:scale-150">
+            <div className="border border-white/40 p-4 flex flex-col items-center relative overflow-hidden bg-black/40">
+              <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t-2 border-l-2 border-[#4ADE80]"></div>
+              <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t-2 border-r-2 border-[#4ADE80]"></div>
+              <div className="absolute bottom-0 left-0 w-2.5 h-2.5 border-b-2 border-l-2 border-[#4ADE80]"></div>
+              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 border-b-2 border-r-2 border-[#4ADE80]"></div>
+              
+              {/* New Logo Image */}
+              <AutoCroppedLogo 
+                src="/logo.png" 
+                alt="MAEVIS Logo" 
+                style={{ filter: 'invert(1)', width: '180px', height: 'auto' }} 
+                className="select-none pointer-events-none" 
+              />
             </div>
           </div>
-          <span className="text-[10px] text-[#4ADE80] mt-6 tracking-[0.3em] font-bold">[ INITIALIZATION COMPLETE ]</span>
+          <span className="text-[10px] text-[#4ADE80] mt-8 tracking-[0.3em] font-bold">[ INITIALIZATION COMPLETE ]</span>
         </div>
       </div>
     </motion.div>

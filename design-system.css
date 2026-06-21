@@ -1,0 +1,486 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,700;0,800;1,700&family=Inter:wght@400;500;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@500;700;800&display=swap');
+
+/* Cascade Layers for predictable specificity and inheritance control */
+@layer base, tokens, components, utilities;
+
+@layer tokens {
+  :root {
+    /* Color Scheme */
+    color-scheme: dark;
+
+    /* Theme Surfaces (oklch-based) */
+    --bg-primary: oklch(14% 0.005 0);       /* Deep black canvas */
+    --bg-secondary: oklch(18% 0.008 0);     /* Base container background */
+    --bg-tertiary: oklch(24% 0.01 0);       /* Inner panel/button background */
+    
+    /* Text Colors */
+    --text-primary: oklch(99% 0 0);          /* Pure off-white */
+    --text-secondary: oklch(75% 0.01 0);    /* Muted silver */
+    --text-tertiary: oklch(50% 0.01 0);     /* Muted dark gray */
+    
+    /* Light Theme (Promo Card Accent) */
+    --bg-light: oklch(97% 0.005 0);         /* Pure off-white container */
+    --bg-light-subtle: oklch(93% 0.005 0);  /* Inner card/panel in light section */
+    --text-dark: oklch(12% 0.005 0);        /* Deep contrast text */
+    --border-light: oklch(85% 0.01 0);      /* Muted light border */
+    
+    /* Accents & States */
+    --color-neon-green: oklch(78% 0.18 140); /* Vibrant terminal green */
+    --color-neon-green-glow: oklch(78% 0.18 140 / 0.4);
+    
+    /* The Immortals Gradient */
+    --color-gradient-start: oklch(62% 0.28 300); /* Neon violet */
+    --color-gradient-end: oklch(68% 0.23 45);    /* Neon orange/coral */
+    
+    /* Borders */
+    --border-primary: oklch(35% 0.01 0);    /* Dark panel borders */
+    --border-subtle: oklch(24% 0.01 0);     /* Subtle border line */
+    
+    /* Typography Fonts */
+    --font-display: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-extended: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+    --font-body: 'JetBrains Mono', monospace;
+    
+    /* Spacing Scale (fluid clamping) */
+    --space-xs: clamp(0.5rem, 0.4rem + 0.4vw, 0.75rem);
+    --space-sm: clamp(0.75rem, 0.6rem + 0.6vw, 1.125rem);
+    --space-md: clamp(1.25rem, 1rem + 1vw, 1.875rem);
+    --space-lg: clamp(2rem, 1.6rem + 1.6vw, 3rem);
+    --space-xl: clamp(3.5rem, 2.8rem + 2.8vw, 5.25rem);
+    
+    /* Border Radii */
+    --radius-none: 0px;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 32px;
+    --radius-full: 9999px;
+    
+    /* Shadows & Glows */
+    --shadow-flat-dark: 4px 4px 0px var(--border-primary);
+    --shadow-flat-green: 4px 4px 0px var(--color-neon-green);
+    --glow-green: 0 0 15px var(--color-neon-green-glow);
+
+    /* Max Widths */
+    --container-max-width: 1280px;
+  }
+}
+
+@layer base {
+  /* Box sizing and scroll reset */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Custom selection theme */
+  ::selection {
+    background-color: var(--color-neon-green);
+    color: var(--bg-primary);
+  }
+
+  /* Custom terminal scrollbars */
+  scrollbar-color: var(--border-primary) var(--bg-primary);
+  scrollbar-width: thin;
+
+  /* Media elements default aspect ratios */
+  img, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: auto;
+  }
+
+  /* Accessible headings default styling */
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  /* Layout Container */
+  .layout-container {
+    width: 100%;
+    max-width: var(--container-max-width);
+    margin-inline: auto;
+    padding-inline: var(--space-md);
+  }
+
+  /* Top Meta-Bar */
+  .system-meta-bar {
+    border-bottom: 1px solid var(--border-subtle);
+    padding-block: var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    letter-spacing: 0.05em;
+  }
+
+  /* Navigation Header Component */
+  .nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-primary);
+    padding-block: var(--space-sm);
+  }
+
+  .nav-brand {
+    font-family: var(--font-extended);
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .nav-menu {
+    display: flex;
+    gap: var(--space-md);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-item {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+  }
+
+  .nav-item:hover {
+    color: var(--color-neon-green);
+    text-shadow: var(--glow-green);
+  }
+
+  /* Section Title Component */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-block: var(--space-lg) var(--space-sm);
+  }
+
+  .section-header::before {
+    content: "●";
+    color: var(--color-neon-green);
+  }
+
+  /* Grayscale Noise Texture Overlay */
+  .halftone-texture {
+    position: relative;
+  }
+
+  .halftone-texture::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.12;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  /* Hero Carousel Banner Component */
+  .hero-carousel {
+    display: grid;
+    grid-template-columns: 1fr;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .hero-image-wrapper {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: var(--bg-secondary);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: grayscale(100%) contrast(110%);
+  }
+
+  .hero-title-overlay {
+    position: absolute;
+    bottom: var(--space-md);
+    right: var(--space-md);
+    text-align: right;
+    max-width: 50%;
+  }
+
+  .hero-title {
+    font-family: var(--font-extended);
+    font-size: clamp(1.75rem, 1rem + 3vw, 4rem);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: 0.05em;
+  }
+
+  .carousel-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    background-color: oklch(0% 0 0 / 0.6);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-full);
+    color: var(--text-primary);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .carousel-button:hover {
+    background-color: var(--color-neon-green);
+    border-color: var(--color-neon-green);
+    color: var(--bg-primary);
+  }
+
+  .carousel-button-left {
+    left: var(--space-sm);
+  }
+
+  .carousel-button-right {
+    right: var(--space-sm);
+  }
+
+  /* Product Catalog Grid */
+  .product-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+    margin-block-end: var(--space-xl);
+  }
+
+  @media (min-width: 768px) {
+    .product-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Product Card Component */
+  .product-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-md);
+    text-align: center;
+    transition: border-color 0.3s ease;
+  }
+
+  .product-card:hover {
+    border-color: var(--color-neon-green);
+  }
+
+  .product-image-container {
+    width: 100%;
+    aspect-ratio: 1;
+    background-color: var(--bg-primary);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    margin-block-end: var(--space-sm);
+  }
+
+  .product-model-image {
+    max-height: 80%;
+    object-fit: contain;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .product-card:hover .product-model-image {
+    transform: scale(1.08) rotate(2deg);
+  }
+
+  .product-title {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+  }
+
+  /* Brutalist Large Typography Title */
+  .brutalist-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 1.2rem + 5vw, 5.5rem);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    margin-block-end: var(--space-xs);
+  }
+
+  /* Gradient Text Effect (Immortals Theme) */
+  .text-gradient-immortals {
+    background: linear-gradient(to bottom, var(--color-gradient-start), var(--color-gradient-end));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Cross-Promo Large Card Container */
+  .promo-card {
+    background-color: var(--bg-light);
+    border-radius: var(--radius-lg);
+    color: var(--text-dark);
+    padding: var(--space-lg);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+    margin-block-end: var(--space-xl);
+  }
+
+  @media (min-width: 992px) {
+    .promo-card {
+      grid-template-columns: 1fr 1.2fr;
+    }
+  }
+
+  .promo-slogan-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .promo-slogan {
+    font-family: var(--font-extended);
+    font-size: clamp(2rem, 1.5rem + 3vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.01em;
+    color: var(--text-dark);
+  }
+
+  /* Dark System Sub-Panel inside Promo Card */
+  .terminal-panel {
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    padding: var(--space-md);
+    border: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  /* Status Indicators and technical label layouts */
+  .terminal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed var(--border-subtle);
+    padding-block-end: var(--space-xs);
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-primary);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background-color: var(--text-tertiary);
+  }
+
+  .status-dot-active {
+    background-color: var(--color-neon-green);
+    box-shadow: var(--glow-green);
+  }
+
+  /* Social / App Badge links */
+  .social-capsule-grid {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+  }
+
+  .social-capsule {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .social-capsule:hover {
+    background-color: var(--color-neon-green);
+    border-color: var(--color-neon-green);
+    color: var(--bg-primary);
+  }
+}
+
+@layer utilities {
+  /* Alignment utilities */
+  .text-center { text-align: center; }
+  .text-left { text-align: left; }
+  .text-right { text-align: right; }
+
+  /* Spacing utilities */
+  .margin-top-0 { margin-top: 0; }
+  .margin-bottom-sm { margin-bottom: var(--space-sm); }
+  .margin-bottom-md { margin-bottom: var(--space-md); }
+  .margin-bottom-lg { margin-bottom: var(--space-lg); }
+
+  /* Flex/Grid utilities */
+  .flex { display: flex; }
+  .grid { display: grid; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+}
+
+/* Reduced Motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}

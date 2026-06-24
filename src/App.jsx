@@ -5,6 +5,7 @@ import Hero from './components/Hero';
 import ProductShowcase from './components/ProductShowcase';
 import ThreeLoader from './components/ThreeLoader';
 import Fabricate from './components/Fabricate';
+import Shop from './components/Shop';
 
 // Import Product Images
 import productSkibidi from './assets/product_skibidi.png';
@@ -120,7 +121,9 @@ function App() {
 
           {activeTab === 'FABRICATE' && <Fabricate />}
 
-          {(activeTab === 'SHOP' || activeTab === 'BLOGS') && (
+          {activeTab === 'SHOP' && <Shop products={featuredProducts} />}
+
+          {activeTab === 'BLOGS' && (
             <main className="flex-grow flex flex-col items-center justify-center p-8 font-mono">
               <div className="border border-[#2C2C2C] p-8 rounded bg-[#0A0A0A] max-w-md w-full text-center relative">
                 {/* Target Corners */}
@@ -131,7 +134,7 @@ function App() {
 
                 <span className="text-[#4ADE80] font-bold text-xs tracking-widest">[ SYSTEM REDIRECT ]</span>
                 <p className="text-white/60 text-xs mt-4 leading-relaxed">
-                  The requested node [{activeTab}] is currently offline or routed through external storefront.
+                  The requested node [BLOGS] is currently offline or routed through external storefront.
                 </p>
                 <button 
                   onClick={() => handleTabChange('HOME')}

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Center } from '@react-three/drei';
+import { Center, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // ========================================================
 // 1. Procedural Filament wrapping simulation component
@@ -101,44 +104,39 @@ const LayerShaderMaterial = {
 // 3. 3D Model Mesh Renderer Component
 // ========================================================
 function ModelMesh({ geometry, viewMode, printProgress, boundingBox }) {
-  const shaderRef = useRef();
-
-  // Create or update shader uniforms
-  useEffect(() => {
-    if (viewMode === 'LAYER') {
-      shaderRef.current = new THREE.ShaderMaterial({
-        uniforms: {
-          uPrintProgress: { value: printProgress },
-          uColor: { value: new THREE.Color('#4ADE80') },
-        },
-        vertexShader: LayerShaderMaterial.vertexShader,
-        fragmentShader: LayerShaderMaterial.fragmentShader,
-        side: THREE.DoubleSide
-      });
-    }
-  }, [viewMode]);
+  const layerMaterial = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uPrintProgress: { value: printProgress },
+        uColor: { value: new THREE.Color('#4ADE80') },
+      },
+      vertexShader: LayerShaderMaterial.vertexShader,
+      fragmentShader: LayerShaderMaterial.fragmentShader,
+      side: THREE.DoubleSide
+    });
+  }, []);
 
   // Update printing progress height in shader
   useFrame(() => {
-    if (viewMode === 'LAYER' && shaderRef.current) {
-      shaderRef.current.uniforms.uPrintProgress.value = printProgress;
+    if (viewMode === 'LAYER' && layerMaterial) {
+      layerMaterial.uniforms.uPrintProgress.value = printProgress;
     }
   });
 
   if (viewMode === 'WIREFRAME') {
     return (
       <mesh geometry={geometry}>
-        <lineBasicMaterial attach="material" color="#4ADE80" opacity={0.35} transparent />
+        <meshBasicMaterial attach="material" color="#4ADE80" opacity={0.85} transparent wireframe />
       </mesh>
     );
   }
 
   if (viewMode === 'LAYER') {
-    return shaderRef.current ? (
+    return (
       <mesh geometry={geometry}>
-        <primitive object={shaderRef.current} attach="material" />
+        <primitive object={layerMaterial} attach="material" />
       </mesh>
-    ) : null;
+    );
   }
 
   // viewMode === 'FINAL' (Solid metallic/textured print)
@@ -147,9 +145,9 @@ function ModelMesh({ geometry, viewMode, printProgress, boundingBox }) {
       {/* Base printed object */}
       <mesh geometry={geometry} castShadow receiveShadow>
         <meshStandardMaterial
-          color="#141414"
-          roughness={0.45}
-          metalness={0.8}
+          color="#a1a8b5"
+          roughness={0.5}
+          metalness={0.15}
           bumpScale={0.05}
         />
       </mesh>
@@ -158,9 +156,9 @@ function ModelMesh({ geometry, viewMode, printProgress, boundingBox }) {
         <meshStandardMaterial
           color="#4ADE80"
           emissive="#4ADE80"
-          emissiveIntensity={0.1}
+          emissiveIntensity={0.6}
           wireframe
-          opacity={0.08}
+          opacity={0.25}
           transparent
         />
       </mesh>
@@ -266,11 +264,82 @@ export default function Fabricate() {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const buffer = e.target.result;
       try {
-        const loader = new STLLoader();
-        const geometry = loader.parse(buffer);
+        let geometry;
+        if (extension === 'STL') {
+          const buffer = e.target.result;
+          const loader = new STLLoader();
+          geometry = loader.parse(buffer);
+        } else if (extension === 'OBJ') {
+          const text = e.target.result;
+          const loader = new OBJLoader();
+          const obj = loader.parse(text);
+          
+          const geometries = [];
+          obj.traverse((child) => {
+            if (child.isMesh && child.geometry) {
+              const geomClone = child.geometry.clone();
+              if (!geomClone.attributes.normal) {
+                geomClone.computeVertexNormals();
+              }
+              geometries.push(geomClone);
+            }
+          });
+          
+          if (geometries.length === 0) {
+            throw new Error('No meshes found in OBJ file');
+          }
+          
+          if (geometries.length === 1) {
+            geometry = geometries[0];
+          } else {
+            geometry = BufferGeometryUtils.mergeGeometries(geometries, true);
+          }
+        } else if (extension === '3MF') {
+          const buffer = e.target.result;
+          const loader = new ThreeMFLoader();
+          const group = loader.parse(buffer);
+          
+          const geometries = [];
+          group.traverse((child) => {
+            if (child.isMesh && child.geometry) {
+              const geomClone = child.geometry.clone();
+              if (!geomClone.attributes.normal) {
+                geomClone.computeVertexNormals();
+              }
+              geometries.push(geomClone);
+            }
+          });
+          
+          if (geometries.length === 0) {
+            throw new Error('No meshes found in 3MF file');
+          }
+          
+          if (geometries.length === 1) {
+            geometry = geometries[0];
+          } else {
+            geometry = BufferGeometryUtils.mergeGeometries(geometries, true);
+          }
+        }
+
+        if (!geometry) {
+          throw new Error('Failed to parse 3D geometry');
+        }
+
         geometry.center();
+        geometry.computeBoundingBox();
+
+        // Scale geometry to fit perfectly within standard viewer space (max dim = 1.2)
+        const size = new THREE.Vector3();
+        geometry.boundingBox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) {
+          const targetDim = 1.2;
+          const scaleFactor = targetDim / maxDim;
+          geometry.scale(scaleFactor, scaleFactor, scaleFactor);
+        }
+
+        // Recompute bounds and normals after scaling
         geometry.computeBoundingBox();
         geometry.computeVertexNormals();
 
@@ -280,11 +349,17 @@ export default function Fabricate() {
           triggerPrintingAnimation(geometry);
         });
       } catch (err) {
+        console.error(err);
         setAnalysisLogs(prev => [...prev, `[ FAIL ] GEOMETRY CORRUPTION DETECTED. RETRY.`]);
         setStatus('IDLE');
       }
     };
-    reader.readAsArrayBuffer(file);
+
+    if (extension === 'OBJ') {
+      reader.readAsText(file);
+    } else {
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   // Sequential terminal printing logs
@@ -528,8 +603,9 @@ export default function Fabricate() {
                 <color attach="background" args={['#050505']} />
                 
                 {/* Tactical grid lights */}
-                <ambientLight intensity={0.4} />
-                <directionalLight position={[1, 3, 2]} intensity={0.8} />
+                <ambientLight intensity={0.7} />
+                <directionalLight position={[1, 3, 2]} intensity={1.5} />
+                <directionalLight position={[-2, 1.5, -2]} intensity={1.2} color="#4ADE80" />
                 <pointLight position={[0, -2, 0]} intensity={0.2} />
                 
                 {/* Subtle glowing printing spotlamp */}
@@ -561,6 +637,16 @@ export default function Fabricate() {
 
                 {/* Print bed grid line helpers */}
                 <gridHelper args={[4, 16, '#222', '#111']} position={[0, -0.65, 0]} />
+
+                <OrbitControls 
+                  enableDamping 
+                  dampingFactor={0.05} 
+                  autoRotate={status === 'COMPLETE' || status === 'IDLE'}
+                  autoRotateSpeed={0.8}
+                  maxPolarAngle={Math.PI / 2 + 0.05} 
+                  minDistance={1.2} 
+                  maxDistance={5.0} 
+                />
               </Canvas>
             </div>
 

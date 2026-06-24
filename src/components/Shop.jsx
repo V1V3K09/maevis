@@ -160,7 +160,7 @@ export default function Shop({ products = [] }) {
           <span className="text-[#BEBEBE] font-bold">[ MAEVIS SUPPLIES // INDUSTRIAL DISPATCH ]</span>
         </div>
         <div className="flex gap-4 mt-2 sm:mt-0">
-          <span>[ DEPOT : BENGALURU-MAIN ]</span>
+          <span>[ DEPOT : NOIDA-MAIN ]</span>
           <button 
             onClick={() => setIsCartOpen(true)}
             className="text-[#4ADE80] font-bold hover:underline cursor-pointer"

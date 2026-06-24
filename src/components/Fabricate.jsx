@@ -540,7 +540,7 @@ export default function Fabricate() {
         <span className="text-[10px] text-[#6B6B6B] tracking-widest font-bold block mb-1">
           [ SUB-LEVEL PORTAL // SECRET SECTOR FBR ]
         </span>
-        <h1 className="font-display font-black text-6xl md:text-8xl tracking-tight text-white leading-none uppercase mb-4">
+        <h1 className="font-display font-black text-5xl sm:text-6xl md:text-8xl tracking-tight text-white leading-none uppercase mb-4">
           FABRICATE<span className="text-[#4ADE80]">.</span>
         </h1>
         <div className="text-white/60 text-xs md:text-sm leading-relaxed space-y-1 max-w-md mb-4">
@@ -564,7 +564,7 @@ export default function Fabricate() {
           {/* 3D Model Viewer Chamber */}
           <div className="w-full border border-[#2C2C2C] bg-[#050505] rounded-lg overflow-hidden relative group">
             {/* HUD overlays inside the viewer */}
-            <div className="absolute top-4 left-4 z-20 text-[9px] text-[#6B6B6B] flex flex-col gap-0.5">
+            <div className="absolute top-4 left-4 z-20 text-[9px] text-[#6B6B6B] hidden sm:flex flex-col gap-0.5">
               <span>[ VIEWPORT CAMERA: DIAGNOSTIC ]</span>
               <span>GRID RANGE: [-2.5 // +2.5]</span>
             </div>

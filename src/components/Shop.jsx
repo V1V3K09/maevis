@@ -175,7 +175,7 @@ export default function Shop({ products = [] }) {
         <span className="text-[10px] text-[#6B6B6B] tracking-widest font-bold block mb-1">
           [ DEPT-92 // PHYSICAL ARTIFACT DISTRIBUTION ]
         </span>
-        <h1 className="font-display font-black text-6xl md:text-8xl tracking-tight text-white leading-none uppercase mb-4">
+        <h1 className="font-display font-black text-5xl sm:text-6xl md:text-8xl tracking-tight text-white leading-none uppercase mb-4">
           WORKSHOP<span className="text-[#4ADE80]">.</span>
         </h1>
         <p className="text-white/60 text-xs md:text-sm leading-relaxed max-w-md">
@@ -306,7 +306,7 @@ export default function Shop({ products = [] }) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#050505] border-l border-[#2C2C2C] z-[201] p-6 flex flex-col justify-between font-mono text-white shadow-2xl"
+              className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#050505] border-l border-[#2C2C2C] z-[201] p-4 sm:p-6 flex flex-col justify-between font-mono text-white shadow-2xl"
             >
               {/* Corner decor */}
               <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#2C2C2C]"></div>

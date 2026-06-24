@@ -61,7 +61,7 @@ export default function Navbar({ activeTab: propActiveTab, onTabChange }) {
 
         {/* Center Section: Main Interactive Navigation Tabs */}
         <div className="flex justify-center items-center py-6 md:py-0 border-b md:border-b-0 md:border-r border-[#2C2C2C]">
-          <nav className="flex gap-6 sm:gap-12 md:gap-16">
+          <nav className="flex gap-4 sm:gap-12 md:gap-16">
             {navItems.map((item, idx) => {
               const isActive = activeTab === item.id;
               return (
@@ -94,7 +94,7 @@ export default function Navbar({ activeTab: propActiveTab, onTabChange }) {
                   </span>
                   
                   {/* Metadata Tag */}
-                  <span className={`text-[9px] mt-1.5 tracking-wider transition-colors duration-200 ${isActive ? 'text-[#4ADE80]/80' : 'text-[#6B6B6B] group-hover:text-white/60'}`}>
+                  <span className={`text-[9px] mt-1.5 tracking-wider transition-colors duration-200 ${isActive ? 'text-[#4ADE80]/80' : 'text-[#6B6B6B] group-hover:text-white/60'} hidden sm:block`}>
                     {item.sub}
                   </span>
                 </motion.button>
@@ -150,7 +150,7 @@ export default function Navbar({ activeTab: propActiveTab, onTabChange }) {
           </div>
 
           {/* Barcode & Mini QR Panel */}
-          <div className="flex flex-col items-end gap-1 font-mono">
+          <div className="hidden sm:flex flex-col items-end gap-1 font-mono">
             {/* Barcode SVG */}
             <div className="text-white/60">
               <svg className="w-20 h-4" viewBox="0 0 100 20" fill="currentColor">

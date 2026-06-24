@@ -99,7 +99,7 @@ export default function Hero() {
         initial={{ opacity: 0, scaleY: 0.96 }}
         animate={{ opacity: 1, scaleY: 1 }}
         transition={{ delay: 0.2, duration: 0.6, ease: [0.19, 1, 0.22, 1] }}
-        className="border border-[#2C2C2C] rounded-xl relative aspect-[16/9] md:aspect-[2.1/1] w-full bg-[#0E0E0E] overflow-hidden group"
+        className="border border-[#2C2C2C] rounded-xl relative aspect-[4/3] xs:aspect-[16/9] md:aspect-[2.1/1] w-full bg-[#0E0E0E] overflow-hidden group"
       >
         
         {/* Animated Carousel Slides */}
@@ -185,7 +185,7 @@ export default function Hero() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
-              className="absolute bottom-4 right-4 md:bottom-8 md:right-8 flex flex-col text-right font-sans font-black tracking-wider leading-[1.05] uppercase pointer-events-none"
+              className="absolute bottom-4 right-4 md:bottom-8 md:right-8 hidden sm:flex flex-col text-right font-sans font-black tracking-wider leading-[1.05] uppercase pointer-events-none"
             >
               {currentSlide.sideText.map((txt, index) => {
                 const isLast = index === currentSlide.sideText.length - 1;

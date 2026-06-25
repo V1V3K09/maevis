@@ -10,6 +10,76 @@ import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js';
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // ========================================================
+// 0. Geometry Math Calculators
+// ========================================================
+function calculateVolumeAndArea(geometry) {
+  let volume = 0;
+  let area = 0;
+  
+  const position = geometry.attributes.position;
+  const index = geometry.index;
+  
+  if (!position) return { volume: 0, surfaceArea: 0 };
+  
+  const pA = new THREE.Vector3();
+  const pB = new THREE.Vector3();
+  const pC = new THREE.Vector3();
+  
+  const cb = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  const cross = new THREE.Vector3();
+  
+  function getTriangleVolumeAndArea(ax, ay, az, bx, by, bz, cx, cy, cz) {
+    pA.set(ax, ay, az);
+    pB.set(bx, by, bz);
+    pC.set(cx, cy, cz);
+    
+    cb.subVectors(pC, pB);
+    ab.subVectors(pA, pB);
+    cross.crossVectors(cb, ab);
+    const triangleArea = cross.length() * 0.5;
+    area += triangleArea;
+    
+    const triangleVolume = (
+      -az * by * cx +
+      ay * bz * cx +
+      az * bx * cy -
+      ax * bz * cy -
+      ay * bx * cz +
+      ax * by * cz
+    ) / 6.0;
+    volume += triangleVolume;
+  }
+  
+  if (index !== null) {
+    for (let i = 0; i < index.count; i += 3) {
+      const idxA = index.getX(i);
+      const idxB = index.getX(i + 1);
+      const idxC = index.getX(i + 2);
+      
+      getTriangleVolumeAndArea(
+        position.getX(idxA), position.getY(idxA), position.getZ(idxA),
+        position.getX(idxB), position.getY(idxB), position.getZ(idxB),
+        position.getX(idxC), position.getY(idxC), position.getZ(idxC)
+      );
+    }
+  } else {
+    for (let i = 0; i < position.count; i += 3) {
+      getTriangleVolumeAndArea(
+        position.getX(i), position.getY(i), position.getZ(i),
+        position.getX(i + 1), position.getY(i + 1), position.getZ(i + 1),
+        position.getX(i + 2), position.getY(i + 2), position.getZ(i + 2)
+      );
+    }
+  }
+  
+  return {
+    volume: Math.abs(volume),
+    surfaceArea: area
+  };
+}
+
+// ========================================================
 // 1. Procedural Filament wrapping simulation component
 // ========================================================
 function FilamentParticles({ printProgress, isPrinting, boundingBox }) {
@@ -103,18 +173,18 @@ const LayerShaderMaterial = {
 // ========================================================
 // 3. 3D Model Mesh Renderer Component
 // ========================================================
-function ModelMesh({ geometry, viewMode, printProgress, boundingBox }) {
+function ModelMesh({ geometry, viewMode, printProgress, boundingBox, colorHex }) {
   const layerMaterial = useMemo(() => {
     return new THREE.ShaderMaterial({
       uniforms: {
         uPrintProgress: { value: printProgress },
-        uColor: { value: new THREE.Color('#4ADE80') },
+        uColor: { value: new THREE.Color(colorHex || '#4ADE80') },
       },
       vertexShader: LayerShaderMaterial.vertexShader,
       fragmentShader: LayerShaderMaterial.fragmentShader,
       side: THREE.DoubleSide
     });
-  }, []);
+  }, [colorHex]);
 
   // Update printing progress height in shader
   useFrame(() => {
@@ -126,7 +196,7 @@ function ModelMesh({ geometry, viewMode, printProgress, boundingBox }) {
   if (viewMode === 'WIREFRAME') {
     return (
       <mesh geometry={geometry}>
-        <meshBasicMaterial attach="material" color="#4ADE80" opacity={0.85} transparent wireframe />
+        <meshBasicMaterial attach="material" color={colorHex || "#4ADE80"} opacity={0.85} transparent wireframe />
       </mesh>
     );
   }
@@ -145,20 +215,20 @@ function ModelMesh({ geometry, viewMode, printProgress, boundingBox }) {
       {/* Base printed object */}
       <mesh geometry={geometry} castShadow receiveShadow>
         <meshStandardMaterial
-          color="#a1a8b5"
-          roughness={0.5}
-          metalness={0.15}
+          color={colorHex || "#a1a8b5"}
+          roughness={0.4}
+          metalness={0.10}
           bumpScale={0.05}
         />
       </mesh>
       {/* Inner glowing core details */}
       <mesh geometry={geometry}>
         <meshStandardMaterial
-          color="#4ADE80"
-          emissive="#4ADE80"
-          emissiveIntensity={0.6}
+          color={colorHex || "#4ADE80"}
+          emissive={colorHex || "#4ADE80"}
+          emissiveIntensity={0.2}
           wireframe
-          opacity={0.25}
+          opacity={0.15}
           transparent
         />
       </mesh>
@@ -173,9 +243,20 @@ export default function Fabricate() {
   const [status, setStatus] = useState('IDLE'); // IDLE, ANALYZING, PRINTING, COMPLETE
   const [viewMode, setViewMode] = useState('FINAL'); // WIREFRAME, LAYER, FINAL
   const [selectedMaterial, setSelectedMaterial] = useState('PLA');
+  const [selectedColor, setSelectedColor] = useState('MATTE BLACK');
   const [fileName, setFileName] = useState('');
   const [analysisLogs, setAnalysisLogs] = useState([]);
   
+  // Colors configuration
+  const colors = {
+    'MATTE BLACK': { hex: '#111111', label: 'MATTE BLACK' },
+    'STEEL GRAY': { hex: '#555555', label: 'STEEL GRAY' },
+    'SIGNAL WHITE': { hex: '#EEEEEE', label: 'SIGNAL WHITE' },
+    'NEON GREEN': { hex: '#4ADE80', label: 'NEON GREEN' },
+    'CYBER ORANGE': { hex: '#F97316', label: 'CYBER ORANGE' },
+    'COBALT BLUE': { hex: '#2563EB', label: 'COBALT BLUE' }
+  };
+
   // Diagnostic state numbers (animate individually)
   const [volume, setVolume] = useState(0);
   const [surfaceArea, setSurfaceArea] = useState(0);
@@ -183,6 +264,7 @@ export default function Fabricate() {
   const [layers, setLayers] = useState(0);
   const [printTime, setPrintTime] = useState({ hours: 0, mins: 0 });
   const [estimatePrice, setEstimatePrice] = useState(0);
+  const [dimensions, setDimensions] = useState({ x: 0, y: 0, z: 0 });
 
   // 3D Geometry States
   const [uploadedGeometry, setUploadedGeometry] = useState(null);
@@ -221,10 +303,11 @@ export default function Fabricate() {
 
   // Materials setup
   const materials = {
-    PLA: { strength: '60%', detail: '85%', durability: '50%', speed: '90%', cost: 1.2 },
-    PETG: { strength: '78%', detail: '75%', durability: '75%', speed: '75%', cost: 1.6 },
-    ABS: { strength: '85%', detail: '70%', durability: '90%', speed: '65%', cost: 1.8 },
-    RESIN: { strength: '45%', detail: '99%', durability: '40%', speed: '40%', cost: 2.8 }
+    PLA: { strength: '60%', detail: '85%', durability: '50%', speed: '90%', cost: 1.2, density: 1.24, speedVal: 0.9 },
+    PETG: { strength: '78%', detail: '75%', durability: '75%', speed: '75%', cost: 1.6, density: 1.27, speedVal: 0.75 },
+    TPU: { strength: '50%', detail: '70%', durability: '98%', speed: '45%', cost: 2.2, density: 1.21, speedVal: 0.45 },
+    ABS: { strength: '85%', detail: '70%', durability: '90%', speed: '65%', cost: 1.8, density: 1.04, speedVal: 0.65 },
+    RESIN: { strength: '45%', detail: '99%', durability: '40%', speed: '40%', cost: 2.8, density: 1.15, speedVal: 0.4 }
   };
 
   // Drag and Drop files
@@ -329,13 +412,36 @@ export default function Fabricate() {
         geometry.center();
         geometry.computeBoundingBox();
 
+        // Calculate original bounding box size in mm (unscaled!)
+        const originalSize = new THREE.Vector3();
+        geometry.boundingBox.getSize(originalSize);
+
+        // Compute real volume and surface area (on the original unscaled geometry!)
+        const stats = calculateVolumeAndArea(geometry);
+
+        // Scale factor helper (e.g. check if coordinates were saved in meters/inches vs mm)
+        const maxDim = Math.max(originalSize.x, originalSize.y, originalSize.z);
+        const unitMultiplier = maxDim < 2.0 ? 100.0 : (maxDim > 500.0 ? 0.1 : 1.0);
+        
+        const adjustedSize = originalSize.clone().multiplyScalar(unitMultiplier);
+        let finalVolume = stats.volume * Math.pow(unitMultiplier, 3);
+        let finalArea = stats.surfaceArea * Math.pow(unitMultiplier, 2);
+        
+        const bboxVolume = adjustedSize.x * adjustedSize.y * adjustedSize.z;
+        if (finalVolume < 0.1) {
+          finalVolume = bboxVolume * 0.45; // fallback: assume 45% filled
+        }
+        if (finalArea < 0.1) {
+          finalArea = 2 * (adjustedSize.x * adjustedSize.y + adjustedSize.y * adjustedSize.z + adjustedSize.z * adjustedSize.x);
+        }
+
         // Scale geometry to fit perfectly within standard viewer space (max dim = 1.2)
         const size = new THREE.Vector3();
         geometry.boundingBox.getSize(size);
-        const maxDim = Math.max(size.x, size.y, size.z);
-        if (maxDim > 0) {
+        const renderMaxDim = Math.max(size.x, size.y, size.z);
+        if (renderMaxDim > 0) {
           const targetDim = 1.2;
-          const scaleFactor = targetDim / maxDim;
+          const scaleFactor = targetDim / renderMaxDim;
           geometry.scale(scaleFactor, scaleFactor, scaleFactor);
         }
 
@@ -346,7 +452,7 @@ export default function Fabricate() {
         // Run sequential telemetry logs
         runAnalysisTelemetry(() => {
           setUploadedGeometry(geometry);
-          triggerPrintingAnimation(geometry);
+          triggerPrintingAnimation(geometry, { volume: finalVolume, surfaceArea: finalArea }, adjustedSize);
         });
       } catch (err) {
         console.error(err);
@@ -387,7 +493,7 @@ export default function Fabricate() {
   };
 
   // Layer-by-layer materialization simulation
-  const triggerPrintingAnimation = (geom) => {
+  const triggerPrintingAnimation = (geom, stats, adjustedSize) => {
     setStatus('PRINTING');
     setViewMode('LAYER');
     isPrinting.current = true;
@@ -400,15 +506,24 @@ export default function Fabricate() {
     setPrintProgress(minY);
     printProgressRef.current = minY;
 
-    // Set mock dimensions for report based on geometry scale
-    const volumeVal = Math.round(15000 + Math.random() * 45000); // mm3
-    const surfaceVal = Math.round(5000 + Math.random() * 15000); // mm2
-    const baseWeight = Math.round((volumeVal / 1000) * 1.25); // grams (approx PLA density)
-    const layerCount = Math.round((maxY - minY) * 150); // mock layers (0.2mm layer height)
-    const printTimeMins = Math.round(80 + Math.random() * 220);
+    // Set real physical dimensions for report
+    const volumeVal = Math.round(stats.volume); 
+    const surfaceVal = Math.round(stats.surfaceArea); 
+    const materialDensity = materials[selectedMaterial].density || 1.25;
+    const baseWeight = Math.round((volumeVal / 1000) * materialDensity * 0.3); // grams (30% infill equivalent)
+    const layerCount = Math.max(1, Math.round(adjustedSize.y / 0.2)); // 0.2mm layers
+    
+    const speedVal = materials[selectedMaterial].speedVal || 0.9;
+    const printTimeMins = Math.round((volumeVal * 0.0012 + surfaceVal * 0.006) / speedVal);
 
     // Dynamic price calculation
     const basePrice = Math.round(150 + (volumeVal / 100) * materials[selectedMaterial].cost);
+
+    setDimensions({
+      x: Math.round(adjustedSize.x),
+      y: Math.round(adjustedSize.y),
+      z: Math.round(adjustedSize.z)
+    });
 
     // Animate diagnostic values wrapping up
     gsap.to({ val: 0 }, {
@@ -466,17 +581,41 @@ export default function Fabricate() {
     });
   };
 
-  // Re-calculate price on material modification
+  // Re-calculate price, weight and print time on material modification
   useEffect(() => {
-    if (status === 'COMPLETE' || status === 'IDLE') {
-      const baseVol = volume || 24500;
-      const calculatedPrice = Math.round(150 + (baseVol / 100) * materials[selectedMaterial].cost);
+    if (status === 'COMPLETE' && volume > 0) {
+      const calculatedPrice = Math.round(150 + (volume / 100) * materials[selectedMaterial].cost);
+      const materialDensity = materials[selectedMaterial].density || 1.25;
+      const calculatedWeight = Math.round((volume / 1000) * materialDensity * 0.3);
+      
+      const speedVal = materials[selectedMaterial].speedVal || 0.9;
+      const calculatedTimeMins = Math.round((volume * 0.0012 + surfaceArea * 0.006) / speedVal);
+
       gsap.to({ val: estimatePrice }, {
         val: calculatedPrice,
         duration: 0.8,
         ease: "power1.out",
         onUpdate: function () {
           setEstimatePrice(Math.round(this.targets()[0].val));
+        }
+      });
+
+      gsap.to({ val: weight }, {
+        val: calculatedWeight,
+        duration: 0.8,
+        ease: "power1.out",
+        onUpdate: function () {
+          setWeight(Math.round(this.targets()[0].val));
+        }
+      });
+
+      gsap.to({ val: printTime.hours * 60 + printTime.mins }, {
+        val: calculatedTimeMins,
+        duration: 0.8,
+        ease: "power1.out",
+        onUpdate: function () {
+          const t = Math.round(this.targets()[0].val);
+          setPrintTime({ hours: Math.floor(t / 60), mins: t % 60 });
         }
       });
     }
@@ -624,6 +763,7 @@ export default function Fabricate() {
                       viewMode={viewMode}
                       printProgress={printProgress}
                       boundingBox={boundingBox}
+                      colorHex={colors[selectedColor].hex}
                     />
                     
                     {/* Active filament strands particle sweep */}
@@ -750,6 +890,44 @@ export default function Fabricate() {
             </div>
           </div>
 
+          {/* Classified Color Selection */}
+          <div className="w-full mt-6">
+            <div className="text-[10px] text-[#6B6B6B] tracking-widest font-bold mb-3 uppercase">
+              [ SELECT MATERIAL COLOR NODE ]
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Object.keys(colors).map((colorName) => {
+                const isActive = selectedColor === colorName;
+                const cInfo = colors[colorName];
+                return (
+                  <button
+                    key={colorName}
+                    onClick={() => setSelectedColor(colorName)}
+                    disabled={status === 'ANALYZING'}
+                    className={`border text-left p-2 rounded-lg relative overflow-hidden transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+                      isActive 
+                        ? 'border-[#4ADE80] bg-[#4ADE80]/5 text-white' 
+                        : 'border-[#2C2C2C] bg-[#050505] text-[#6B6B6B] hover:border-white/40 hover:bg-[#080808]'
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-[#4ADE80]"></div>
+                    )}
+                    
+                    <span 
+                      className="w-3 h-3 rounded-full border border-white/20 inline-block shrink-0" 
+                      style={{ backgroundColor: cInfo.hex }}
+                    />
+                    
+                    <span className="text-[9px] font-bold tracking-wider font-mono">
+                      {colorName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
         </div>
 
         {/* ========================================================
@@ -820,6 +998,12 @@ export default function Fabricate() {
                 </span>
               </div>
               <div className="flex flex-col border-b border-[#1C1C1C] pb-2">
+                <span className="text-[#6B6B6B] tracking-wider mb-1">PHYSICAL DIMENSIONS</span>
+                <span className="text-white font-bold">
+                  {dimensions.x || dimensions.y || dimensions.z ? `${dimensions.x} × ${dimensions.y} × ${dimensions.z} mm` : '---'}
+                </span>
+              </div>
+              <div className="flex flex-col border-b border-[#1C1C1C] pb-2">
                 <span className="text-[#6B6B6B] tracking-wider mb-1">TOTAL VOLUME</span>
                 <span className="text-[#4ADE80] font-bold">
                   {displayVolume} {volume ? 'mm³' : ''}
@@ -846,6 +1030,13 @@ export default function Fabricate() {
               <div className="flex flex-col border-b border-[#1C1C1C] pb-2">
                 <span className="text-[#6B6B6B] tracking-wider mb-1">MATERIAL REQUIRED</span>
                 <span className="text-white font-bold">{selectedMaterial} // RAW</span>
+              </div>
+              <div className="flex flex-col border-b border-[#1C1C1C] pb-2">
+                <span className="text-[#6B6B6B] tracking-wider mb-1">MATERIAL COLOR</span>
+                <span className="text-white font-bold flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: colors[selectedColor].hex }}></span>
+                  {selectedColor}
+                </span>
               </div>
               <div className="flex flex-col border-b border-[#1C1C1C] pb-2">
                 <span className="text-[#6B6B6B] tracking-wider mb-1">SUPPORT MATERIAL</span>

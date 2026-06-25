@@ -305,9 +305,7 @@ export default function Fabricate() {
   const materials = {
     PLA: { strength: '60%', detail: '85%', durability: '50%', speed: '90%', cost: 1.2, density: 1.24, speedVal: 0.9 },
     PETG: { strength: '78%', detail: '75%', durability: '75%', speed: '75%', cost: 1.6, density: 1.27, speedVal: 0.75 },
-    TPU: { strength: '50%', detail: '70%', durability: '98%', speed: '45%', cost: 2.2, density: 1.21, speedVal: 0.45 },
-    ABS: { strength: '85%', detail: '70%', durability: '90%', speed: '65%', cost: 1.8, density: 1.04, speedVal: 0.65 },
-    RESIN: { strength: '45%', detail: '99%', durability: '40%', speed: '40%', cost: 2.8, density: 1.15, speedVal: 0.4 }
+    TPU: { strength: '50%', detail: '70%', durability: '98%', speed: '45%', cost: 2.2, density: 1.21, speedVal: 0.45 }
   };
 
   // Drag and Drop files

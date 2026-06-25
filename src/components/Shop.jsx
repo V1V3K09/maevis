@@ -5,6 +5,7 @@ export default function Shop({ products = [] }) {
   const [cart, setCart] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [materials, setMaterials] = useState({}); // productId -> selectedMaterial
+  const [colorsState, setColorsState] = useState({}); // productId -> selectedColor
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [checkoutStatus, setCheckoutStatus] = useState('IDLE'); // IDLE, PROCESSING, SUCCESS
   const [checkoutLogs, setCheckoutLogs] = useState([]);
@@ -13,8 +14,16 @@ export default function Shop({ products = [] }) {
   const materialSpecs = {
     PLA: { costMultiplier: 1.0, label: 'PLA (Standard)' },
     PETG: { costMultiplier: 1.2, label: 'PETG (Durable)' },
-    ABS: { costMultiplier: 1.35, label: 'ABS (High Temp)' },
-    RESIN: { costMultiplier: 1.6, label: 'RESIN (High Detail)' }
+    TPU: { costMultiplier: 1.5, label: 'TPU (Flexible)' }
+  };
+
+  const colors = {
+    'MATTE BLACK': { hex: '#111111', label: 'MATTE BLACK' },
+    'STEEL GRAY': { hex: '#555555', label: 'STEEL GRAY' },
+    'SIGNAL WHITE': { hex: '#EEEEEE', label: 'SIGNAL WHITE' },
+    'NEON GREEN': { hex: '#4ADE80', label: 'NEON GREEN' },
+    'CYBER ORANGE': { hex: '#F97316', label: 'CYBER ORANGE' },
+    'COBALT BLUE': { hex: '#2563EB', label: 'COBALT BLUE' }
   };
 
   // Build full product list with mock metadata
@@ -64,13 +73,21 @@ export default function Shop({ products = [] }) {
     }));
   };
 
+  const handleColorChange = (productId, color) => {
+    setColorsState(prev => ({
+      ...prev,
+      [productId]: color
+    }));
+  };
+
   const addToCart = (product) => {
     const material = materials[product.id] || 'PLA';
+    const color = colorsState[product.id] || 'MATTE BLACK';
     const price = getProductPrice(product, material);
     
     setCart(prev => {
-      // Check if item with same material already in cart
-      const existingIdx = prev.findIndex(item => item.id === product.id && item.material === material);
+      // Check if item with same material and color already in cart
+      const existingIdx = prev.findIndex(item => item.id === product.id && item.material === material && item.color === color);
       if (existingIdx > -1) {
         const next = [...prev];
         next[existingIdx] = {
@@ -79,7 +96,7 @@ export default function Shop({ products = [] }) {
         };
         return next;
       }
-      return [...prev, { ...product, material, price, quantity: 1 }];
+      return [...prev, { ...product, material, color, price, quantity: 1 }];
     });
     
     setIsCartOpen(true);
@@ -102,10 +119,10 @@ export default function Shop({ products = [] }) {
     }
   };
 
-  const updateQuantity = (itemId, material, delta) => {
+  const updateQuantity = (itemId, material, color, delta) => {
     setCart(prev => {
       return prev.map(item => {
-        if (item.id === itemId && item.material === material) {
+        if (item.id === itemId && item.material === material && item.color === color) {
           const newQty = item.quantity + delta;
           return newQty > 0 ? { ...item, quantity: newQty } : null;
         }
@@ -254,7 +271,7 @@ export default function Shop({ products = [] }) {
 
                 {/* Material select and Add to Cart */}
                 <div className="border-t border-[#1C1C1C] pt-4 mt-auto">
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="text-[9px] text-[#6B6B6B] tracking-widest font-bold">MATERIAL COMPILE:</span>
                     <select
                       value={currentMat}
@@ -264,6 +281,21 @@ export default function Shop({ products = [] }) {
                       {Object.keys(materialSpecs).map((mat) => (
                         <option key={mat} value={mat}>
                           {materialSpecs[mat].label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[9px] text-[#6B6B6B] tracking-widest font-bold">COLOR SCHEME:</span>
+                    <select
+                      value={colorsState[product.id] || 'MATTE BLACK'}
+                      onChange={(e) => handleColorChange(product.id, e.target.value)}
+                      className="bg-[#0A0A0A] text-white border border-[#2C2C2C] text-[9px] px-2 py-1 outline-none cursor-pointer hover:border-white focus:border-[#4ADE80]"
+                    >
+                      {Object.keys(colors).map((colorKey) => (
+                        <option key={colorKey} value={colorKey}>
+                          {colors[colorKey].label}
                         </option>
                       ))}
                     </select>
@@ -337,7 +369,7 @@ export default function Shop({ products = [] }) {
                   <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                     {cart.map((item, idx) => (
                       <div 
-                        key={`${item.id}-${item.material}`}
+                        key={`${item.id}-${item.material}-${item.color}`}
                         className="border border-[#1C1C1C] bg-[#0A0A0A] p-3 rounded flex justify-between relative"
                       >
                         <div className="flex-1">
@@ -345,7 +377,7 @@ export default function Shop({ products = [] }) {
                             {item.name}
                           </span>
                           <span className="text-[8px] text-[#4ADE80] tracking-widest font-bold uppercase block mb-1">
-                            [{item.material}]
+                            [{item.material} // {item.color}]
                           </span>
                           <span className="text-xs font-bold text-white/80">
                             ₹{item.price}
@@ -354,7 +386,7 @@ export default function Shop({ products = [] }) {
 
                         <div className="flex flex-col justify-between items-end">
                           <button
-                            onClick={() => updateQuantity(item.id, item.material, -item.quantity)}
+                            onClick={() => updateQuantity(item.id, item.material, item.color, -item.quantity)}
                             className="text-red-500 hover:text-red-400 text-[8px] tracking-widest uppercase cursor-pointer"
                           >
                             [ REMOVE ]
@@ -362,14 +394,14 @@ export default function Shop({ products = [] }) {
                           
                           <div className="flex items-center gap-2 mt-2">
                             <button
-                              onClick={() => updateQuantity(item.id, item.material, -1)}
+                              onClick={() => updateQuantity(item.id, item.material, item.color, -1)}
                               className="w-5 h-5 border border-[#2C2C2C] hover:border-white flex items-center justify-center text-xs cursor-pointer"
                             >
                               -
                             </button>
                             <span className="text-[10px] w-4 text-center font-bold">{item.quantity}</span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.material, 1)}
+                              onClick={() => updateQuantity(item.id, item.material, item.color, 1)}
                               className="w-5 h-5 border border-[#2C2C2C] hover:border-white flex items-center justify-center text-xs cursor-pointer"
                             >
                               +
